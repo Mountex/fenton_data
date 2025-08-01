@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fenton Third Generation Preterm Growth Charts</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            margin-bottom: 40px;
+            position: relative;
+            height: 500px;
+        }
+        .chart-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .gender-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+        .metric-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .display-options {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        .tab-button {
+            padding: 10px 30px;
+            background: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 5px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .tab-button.active {
+            background: #007bff;
+            color: white;
+        }
+        .tab-button:hover {
+            background: #d0d0d0;
+        }
+        .tab-button.active:hover {
+            background: #0056b3;
+        }
+        .metric-tab {
+            padding: 8px 20px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 2px;
+            border-radius: 3px;
+            transition: all 0.3s;
+        }
+        .metric-tab.active {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+        .metric-tab:hover {
+            background: #e9ecef;
+        }
+        .metric-tab.active:hover {
+            background: #218838;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .toggle-label {
+            font-size: 14px;
+            color: #555;
+            margin: 0 10px;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+            gap: 15px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            margin-right: 8px;
+            border-radius: 1px;
+        }
+        .performance-warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #856404;
+            text-align: center;
+            display: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 16px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Fenton Third Generation Preterm Growth Charts (2025)</h1>
+        
+        <div class="loading" id="loadingMessage">Loading growth chart data...</div>
+        
+        <div id="mainContent" style="display: none;">
+            <div class="gender-tabs">
+                <button class="tab-button active" onclick="showGender('boys')">Boys</button>
+                <button class="tab-button" onclick="showGender('girls')">Girls</button>
+            </div>
+
+            <div class="metric-tabs">
+                <button class="metric-tab active" onclick="showMetric('weight')">Weight (kg)</button>
+                <button class="metric-tab" onclick="showMetric('head_circumference')">Head Circumference (cm)</button>
+                <button class="metric-tab" onclick="showMetric('length')">Length (cm)</button>
+            </div>
+
+            <div class="display-options">
+                <span class="toggle-label">Default Percentiles</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="showAllPercentiles" onchange="togglePercentileDisplay()">
+                    <span class="slider"></span>
+                </label>
+                <span class="toggle-label">All Percentiles (1%-100%)</span>
+            </div>
+
+            <div class="performance-warning" id="performanceWarning">
+                ⚠️ Displaying all percentiles may affect chart performance. Recommended for high-performance devices.
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title" id="chartTitle">Boys Weight Percentile Chart</div>
+                <canvas id="growthChart"></canvas>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #dc3545;"></div>
+                    <span>3%</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #fd7e14;"></div>
+                    <span>10%</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #28a745;"></div>
+                    <span>50%</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #17a2b8;"></div>
+                    <span>90%</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #6f42c1;"></div>
+                    <span>97%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let fentonData = {};
+        let currentChart = null;
+        let currentGender = 'boys';
+        let currentMetric = 'weight';
+        let showAllPercentiles = false;
+
+        const percentileColors = {
+            '3%': '#dc3545',
+            '10%': '#fd7e14',
+            '50%': '#28a745',
+            '90%': '#17a2b8',
+            '97%': '#6f42c1'
+        };
+
+        const metricInfo = {
+            'weight': { unit: 'kg', title: 'Weight', maxY: 8 },
+            'head_circumference': { unit: 'cm', title: 'Head Circumference', maxY: 50 },
+            'length': { unit: 'cm', title: 'Length', maxY: 65 }
+        };
+
+        async function loadFentonData() {
+            try {
+                // Load all JSON files in parallel
+                const [
+                    boysWeight,
+                    boysLength,
+                    boysHeadCirc,
+                    girlsWeight,
+                    girlsLength,
+                    girlsHeadCirc
+                ] = await Promise.all([
+                    fetch('boys_weight.json').then(res => res.json()),
+                    fetch('boys_length.json').then(res => res.json()),
+                    fetch('boys_head_circumference.json').then(res => res.json()),
+                    fetch('girls_weight.json').then(res => res.json()),
+                    fetch('girls_length.json').then(res => res.json()),
+                    fetch('girls_head_circumference.json').then(res => res.json())
+                ]);
+
+                // Structure the data
+                fentonData = {
+                    boys: {
+                        weight: boysWeight,
+                        length: boysLength,
+                        head_circumference: boysHeadCirc
+                    },
+                    girls: {
+                        weight: girlsWeight,
+                        length: girlsLength,
+                        head_circumference: girlsHeadCirc
+                    }
+                };
+
+                // Hide loading message and show main content
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                
+                updateChart();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loadingMessage').textContent = 'Error loading data. Please check if all JSON files are available.';
+            }
+        }
+
+        function processDataForChart(data) {
+            const datasets = [];
+            // Sort data by percentile type to ensure consistent coloring and layering
+            const sortedData = data.sort((a, b) => {
+                const pA = parseFloat(a.type.replace('%', ''));
+                const pB = parseFloat(b.type.replace('%', ''));
+                return pA - pB;
+            });
+
+            // Group data by percentile
+            const groupedData = sortedData.reduce((acc, item) => {
+                if (!acc[item.type]) {
+                    acc[item.type] = [];
+                }
+                acc[item.type].push(item);
+                return acc;
+            }, {});
+
+            // Filter percentiles based on display mode
+            const percentilesToShow = showAllPercentiles 
+                ? Object.keys(groupedData) 
+                : ['3%', '10%', '50%', '90%', '97%'];
+
+            for (const percentile of percentilesToShow) {
+                if (!groupedData[percentile]) continue;
+
+                // Assign colors for the 5 key percentiles, others will be light grey
+                let color = percentileColors[percentile] || '#d3d3d3'; 
+                let borderWidth = percentileColors[percentile] ? 2 : 1;
+                let pointRadius = 0;
+
+                datasets.push({
+                    label: percentile,
+                    data: groupedData[percentile].map(item => ({x: item.week, y: item.yData})),
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    borderWidth: borderWidth,
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: pointRadius,
+                    pointHoverRadius: 4
+                });
+            }
+            return datasets;
+        }
+
+        function createChart(gender, metric) {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            const data = fentonData[gender][metric];
+            const datasets = processDataForChart(data);
+            const info = metricInfo[metric];
+
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: showAllPercentiles ? 0 : 1000 // Disable animation for better performance when showing all percentiles
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Gestational Age (weeks)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            min: 22,
+                            max: 50,
+                            ticks: {
+                                stepSize: 2
+                            },
+                            grid: {
+                                display: true,
+                                color: '#e0e0e0'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: `${info.title} (${info.unit})`,
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            min: 0,
+                            max: info.maxY,
+                            grid: {
+                                display: true,
+                                color: '#e0e0e0'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'nearest',
+                            intersect: false,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    return 'Gestational Age: ' + tooltipItems[0].parsed.x + ' weeks';
+                                },
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(metric === 'weight' ? 2 : 1) + ' ' + info.unit;
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function showGender(gender) {
+            currentGender = gender;
+            
+            // Update gender tab buttons
+            document.querySelectorAll('.gender-tabs .tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            updateChart();
+        }
+
+        function showMetric(metric) {
+            currentMetric = metric;
+            
+            // Update metric tab buttons
+            document.querySelectorAll('.metric-tabs .metric-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            updateChart();
+        }
+
+        function togglePercentileDisplay() {
+            showAllPercentiles = document.getElementById('showAllPercentiles').checked;
+            const warning = document.getElementById('performanceWarning');
+            
+            if (showAllPercentiles) {
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+            
+            updateChart();
+        }
+
+        function updateChart() {
+            const genderText = currentGender === 'boys' ? 'Boys' : 'Girls';
+            const metricText = metricInfo[currentMetric].title;
+            const percentileText = showAllPercentiles ? 'All Percentiles Chart' : 'Percentile Chart';
+            const title = `${genderText} ${metricText} ${percentileText}`;
+            document.getElementById('chartTitle').textContent = title;
+
+            createChart(currentGender, currentMetric);
+        }
+
+        // Load data and initialize with boys weight chart
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFentonData();
+        });
+    </script>
+</body>
+</html>
+
